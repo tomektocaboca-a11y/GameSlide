@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - GameSlide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav-links a:hover {
+            color: #667eea;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .profile-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+        }
+        .game-info {
+            padding: 1.5rem;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: #dc3545;
+            color: white;
+            margin-top: 1rem;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">🎮 GameSlide</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="upload.html">Upload</a>
+                <a href="#" onclick="logout()">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="profile-content">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 REPLACE WITH YOUR SUPABASE VALUES
+        const SUPABASE_URL = 'https://your-project-id.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function loadProfile() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const content = document.getElementById('profile-content');
+            
+            try {
+                // Get user's games
+                const { data: games, error } = await supabase
+                    .from('games')
+                    .select('*')
+                    .eq('uploader_id', user.id)
+                    .order('created_at', { ascending: false });
+                
+                let gamesHTML = '';
+                
+                if (games && games.length > 0) {
+                    gamesHTML = games.map(game => `
+                        <div class="game-card" onclick="window.location.href='game.html?id=${game.id}'">
+                            <div class="game-info">
+                                <h3>${escapeHtml(game.title)}</h3>
+                                <p>${escapeHtml(game.description || '')}</p>
+                                <p>Type: ${game.file_type} | Downloads: ${game.downloads || 0}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    gamesHTML = '<p style="color: white;">You haven\'t uploaded any games yet.</p>';
+                }
+                
+                content.innerHTML = `
+                    <div class="profile-card">
+                        <h2>👤 Your Profile</h2>
+                        <p><strong>Email:</strong> ${escapeHtml(user.email)}</p>
+                        <p><strong>User ID:</strong> ${user.id}</p>
+                        <button class="btn" onclick="logout()">Logout</button>
+                    </div>
+                    
+                    <h2 style="color: white;">📦 Your Uploaded Games</h2>
+                    <div class="games-grid">
+                        ${gamesHTML}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                content.innerHTML = '<p style="color: white;">Error loading profile</p>';
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            window.location.href = 'index.html';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

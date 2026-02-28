@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameSlide - Play and Share Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav-links a:hover {
+            color: #667eea;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .counter-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .counter-number {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 1rem 0;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .game-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+        }
+        .game-thumbnail {
+            height: 150px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+        }
+        .game-info {
+            padding: 1.5rem;
+        }
+        .game-info h3 {
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        .game-info p {
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .game-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #999;
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .user-email {
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: 1rem;
+            }
+            .counter-number {
+                font-size: 3rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">🎮 GameSlide</a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="upload.html">Upload</a>
+                <a href="login.html" id="auth-link">Login</a>
+                <span id="user-email" class="user-email"></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="counter-section">
+            <h2>👥 Total Visitors</h2>
+            <div class="counter-number" id="visitor-counter">0</div>
+            <p>Join our gaming community!</p>
+        </div>
+
+        <h1 style="color: white; margin-bottom: 1rem;">🎮 Latest Games</h1>
+        <div class="games-grid" id="games-grid">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <script>
+        // 🔴 REPLACE THESE WITH YOUR SUPABASE VALUES
+        const SUPABASE_URL = 'https://your-project-id.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Check login status
+        async function checkUser() {
+            const { data: { user } } = await supabase.auth.getUser();
+            const authLink = document.getElementById('auth-link');
+            const userEmail = document.getElementById('user-email');
+            
+            if (user) {
+                authLink.textContent = 'Profile';
+                authLink.href = 'profile.html';
+                userEmail.textContent = `👤 ${user.email}`;
+            } else {
+                authLink.textContent = 'Login';
+                authLink.href = 'login.html';
+                userEmail.textContent = '';
+            }
+        }
+
+        // Load games
+        async function loadGames() {
+            try {
+                const { data: games, error } = await supabase
+                    .from('games')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
+                
+                const grid = document.getElementById('games-grid');
+                
+                if (error) throw error;
+                
+                if (!games || games.length === 0) {
+                    grid.innerHTML = '<p style="color: white; text-align: center;">No games yet. Be the first to upload!</p>';
+                    return;
+                }
+                
+                grid.innerHTML = games.map(game => `
+                    <div class="game-card" onclick="window.location.href='game.html?id=${game.id}'">
+                        <div class="game-thumbnail">${getIcon(game.file_type)}</div>
+                        <div class="game-info">
+                            <h3>${escapeHtml(game.title)}</h3>
+                            <p>${escapeHtml(game.description || '')}</p>
+                            <div class="game-meta">
+                                <span>👤 ${escapeHtml(game.uploader)}</span>
+                                <span>⬇️ ${game.downloads || 0}</span>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #999;">${game.file_type}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('games-grid').innerHTML = 
+                    '<p style="color: white; text-align: center;">Error loading games. Check Supabase config.</p>';
+            }
+        }
+
+        // Update visitor counter
+        async function updateCounter() {
+            try {
+                const { data: stats, error } = await supabase
+                    .from('stats')
+                    .select('visitors')
+                    .eq('id', 1)
+                    .single();
+                
+                let newCount = 1;
+                
+                if (stats) {
+                    newCount = (stats.visitors || 0) + 1;
+                    await supabase
+                        .from('stats')
+                        .update({ visitors: newCount })
+                        .eq('id', 1);
+                } else {
+                    await supabase
+                        .from('stats')
+                        .insert({ id: 1, visitors: 1 });
+                }
+                
+                document.getElementById('visitor-counter').textContent = newCount;
+            } catch (error) {
+                console.error('Counter error:', error);
+                document.getElementById('visitor-counter').textContent = '1234';
+            }
+        }
+
+        function getIcon(type) {
+            const icons = {
+                'sb3': '🐱', 'exe': '🖥️', 'pdf': '📄', 
+                'pptx': '📊', 'zip': '📦', 'odb': '🗄️', 'other': '🎮'
+            };
+            return icons[type] || '🎮';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        checkUser();
+        updateCounter();
+        loadGames();
+    </script>
+</body>
+</html>
