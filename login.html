@@ -188,8 +188,8 @@
 
     <script>
         // 🔴 REPLACE WITH YOUR SUPABASE VALUES
-        const SUPABASE_URL = 'https://your-project-id.supabase.co';
-        const SUPABASE_ANON_KEY = 'your-anon-key';
+        const SUPABASE_URL = 'https://your-project-id.supabase.co';     // ← YOUR URL HERE
+        const SUPABASE_ANON_KEY = 'your-anon-key';                      // ← YOUR KEY HERE
         
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -213,7 +213,9 @@
         }
 
         async function handleLogin(event) {
-            event.preventDefault();
+            event.preventDefault();  // ← THIS STOPS PAGE RELOAD
+            console.log('Login function running');
+            
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
             const status = document.getElementById('auth-status');
@@ -233,12 +235,15 @@
                     window.location.href = 'index.html';
                 }, 1500);
             } catch (error) {
+                console.error('Login error:', error);
                 status.innerHTML = `<p style="color: red;">❌ ${error.message}</p>`;
             }
         }
 
         async function handleSignup(event) {
-            event.preventDefault();
+            event.preventDefault();  // ← THIS STOPS PAGE RELOAD
+            console.log('Signup function running');
+            
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
             const status = document.getElementById('auth-status');
@@ -255,6 +260,7 @@
                 
                 status.innerHTML = '<p style="color: green;">✅ Account created! Check your email.</p>';
             } catch (error) {
+                console.error('Signup error:', error);
                 status.innerHTML = `<p style="color: red;">❌ ${error.message}</p>`;
             }
         }
@@ -267,6 +273,7 @@
                 
                 if (error) throw error;
             } catch (error) {
+                console.error('Google sign-in error:', error);
                 document.getElementById('auth-status').innerHTML = 
                     `<p style="color: red;">❌ ${error.message}</p>`;
             }
